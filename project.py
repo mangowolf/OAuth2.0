@@ -172,6 +172,7 @@ def gconnect():
         return response
 
     # Store the access token in the session for later use.
+    login_session['credentials'] = credentials
     login_session['access_token'] = credentials.access_token
     login_session['gplus_id'] = gplus_id
 
@@ -245,7 +246,20 @@ def gdisconnect():
     url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % access_token
     h = httplib2.Http()
     result = h.request(url, 'GET')[0]
-    if result['status'] != '200':
+    if result['status'] == '200':
+        #Reset the user's session
+        del login_session['credentials']
+        del login_session['gplus_id']
+        del login_session['access_token']
+        del login_session['username']
+        del login_session['email']
+        del login_session['picture']
+
+        response = make_response(
+          json.dumps('Successfully disconnected'), 200)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    else:
         # For whatever reason, the given token was invalid.
         response = make_response(
             json.dumps('Failed to revoke token for given user.'), 400)
@@ -302,8 +316,6 @@ def newRestaurant():
         return render_template('newRestaurant.html')
 
 # Edit a restaurant
-
-
 @app.route('/restaurant/<int:restaurant_id>/edit/', methods=['GET', 'POST'])
 def editRestaurant(restaurant_id):
     editedRestaurant = session.query(
@@ -373,8 +385,6 @@ def newMenuItem(restaurant_id):
         return render_template('newmenuitem.html', restaurant_id=restaurant_id)
 
 # Edit a menu item
-
-
 @app.route('/restaurant/<int:restaurant_id>/menu/<int:menu_id>/edit', methods=['GET', 'POST'])
 def editMenuItem(restaurant_id, menu_id):
     if 'username' not in login_session:
